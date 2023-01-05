@@ -30,7 +30,7 @@ class ExtendedImageFolder(ImageFolderSafe):
         real_index = (index // self.steps_per_example) + self.start_index
         if self.minimizer is not None:
             real_index = self.minimizer[real_index]
-        path, target = self.samples[real_index]
+        path, target = self.samples[real_index][0],leslabs[target]
         sample = self.loader(path)
         if self.transform is not None and not self.single_crop:
             samples = torch.stack([self.transform(sample) for i in range(self.batch_size)], axis=0)
