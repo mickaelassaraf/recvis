@@ -52,7 +52,7 @@ def get_args_parser():
     parser.add_argument('--head_type', default='linear',
                         help='Head type - linear or vit_head')
     parser.add_argument('--num_workers', default=10, type=int)
-    
+    parser.add_argument('--labels',default='')
     return parser
 
 
@@ -64,7 +64,12 @@ def main(args):
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
     dataset_val = datasets.ImageFolder(args.data_path, transform=transform_val)
     classes = 1000
-
+    
+    leslabs=[]
+    file = open(args.labels, "r")
+    for line in file:
+        leslabs.append(int(line)-1)
+    file.close()
     
     print(f'Using dataset {args.data_path} with {len(dataset_val)}') 
     model, _, _ = load_combined_model(args, classes)
