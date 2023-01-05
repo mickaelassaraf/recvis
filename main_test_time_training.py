@@ -182,11 +182,11 @@ def main(args):
         leslabs.append(int(line)-1)
     file.close()
 
-    dataset_train = tt_image_folder.ExtendedImageFolder(data_path,label=leslabs, transform=transform_train, minimizer=None, 
+    dataset_train = tt_image_folder.ExtendedImageFolder(data_path,labels=leslabs, transform=transform_train, minimizer=None, 
                                                         batch_size=args.batch_size, steps_per_example=args.steps_per_example * args.accum_iter, 
                                                         single_crop=args.single_crop, start_index=max_known_file+1)
 
-    dataset_val = tt_image_folder.ExtendedImageFolder(data_path,label=leslabs, transform=transform_val, 
+    dataset_val = tt_image_folder.ExtendedImageFolder(data_path,labels=leslabs, transform=transform_val, 
                                                         batch_size=1, minimizer=None, 
                                                         single_crop=args.single_crop, start_index=max_known_file+1)
 
