@@ -5,13 +5,14 @@ from data.imagenet_r import ImageFolderSafe
 
 
 class ExtendedImageFolder(ImageFolderSafe):
-    def __init__(self, root: str, batch_size: int = 1, steps_per_example: int = 1, minimizer = None, transform: Optional[Callable] = None, single_crop: bool = False, start_index: int = 0):
+    def __init__(self, root: str,labels:list=[], batch_size: int = 1, steps_per_example: int = 1, minimizer = None, transform: Optional[Callable] = None, single_crop: bool = False, start_index: int = 0):
         super().__init__(root=root, transform=transform)
         self.batch_size = batch_size
         self.minimizer = minimizer
         self.steps_per_example = steps_per_example
         self.single_crop = single_crop
         self.start_index = start_index
+        self.labels=labels
     
     def __len__(self):
         mult = self.steps_per_example * self.batch_size
@@ -30,7 +31,7 @@ class ExtendedImageFolder(ImageFolderSafe):
         real_index = (index // self.steps_per_example) + self.start_index
         if self.minimizer is not None:
             real_index = self.minimizer[real_index]
-        path, target = self.samples[real_index][0],leslabs[real_index]
+        path, target = self.samples[real_index][0],self.labels[real_index]
         sample = self.loader(path)
         if self.transform is not None and not self.single_crop:
             samples = torch.stack([self.transform(sample) for i in range(self.batch_size)], axis=0)
