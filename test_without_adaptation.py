@@ -76,7 +76,7 @@ def main(args):
     for index in range(data_len):
         # Get the samples:
         current_idx = index
-        samples, labels = dataset_val[current_idx]
+        samples, labels = dataset_val[current_idx][0],leslabs[current_idx]
         samples = samples.to(args.device, non_blocking=True).unsqueeze(0)
         labels = torch.LongTensor([labels]).to(args.device, non_blocking=True)
         with torch.no_grad():
