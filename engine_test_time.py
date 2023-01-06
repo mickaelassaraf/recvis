@@ -171,7 +171,7 @@ def train_on_test(base_model: torch.nn.Module,
             all_results = [list() for i in range(args.steps_per_example)]
             all_losses = [list() for i in range(args.steps_per_example)]
         model, optimizer, loss_scaler = _reinitialize_model(base_model, base_optimizer, base_scalar, clone_model, args, device)
-    save_accuracy_results(args)
+  #  save_accuracy_results(args)
     # gather the stats from all processes
     try:
         print("Averaged stats:", metric_logger)
