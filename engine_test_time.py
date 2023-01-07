@@ -106,7 +106,7 @@ def train_on_test(base_model: torch.nn.Module,
     val_loader = iter(torch.utils.data.DataLoader(dataset_val, batch_size=1, shuffle=False, num_workers=args.num_workers))
     accum_iter = args.accum_iter
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    
+    Matrix=[]
     model, optimizer, loss_scaler = _reinitialize_model(base_model, base_optimizer, base_scalar, clone_model, args, device)
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
@@ -168,8 +168,32 @@ def train_on_test(base_model: torch.nn.Module,
                 np.save(f, np.array(all_results))
             with open(os.path.join(args.output_dir, f'losses_{data_iter_step}.npy'), 'wb') as f:
                 np.save(f, np.array(all_losses))
+            with open(os.path.join(args.output_dir, f'Matrix_{data_iter_step}.npy'), 'wb') as f:
+                np.save(f, np.array(Matrix))
+            
             all_results = [list() for i in range(args.steps_per_example)]
             all_losses = [list() for i in range(args.steps_per_example)]
+            
+            
+        model.eval()    
+        val_loader2 = iter(torch.utils.data.DataLoader(dataset_val, batch_size=1, shuffle=False, num_workers=args.num_workers))
+        all_acc2=[]
+        for data_iter_step2 in range(iter_start, dataset_len): 
+            val_data2 = next(val_loader2)
+            (test_samples2, test_label2) = val_data2
+            test_samples2 = test_samples2.to(device, non_blocking=True)[0]
+            test_label2 = test_label2.to(device, non_blocking=True)
+      
+            with torch.no_grad():
+                all_pred2 = []
+                all_pred2.extend(list(pred2.argmax(axis=1).detach().cpu().numpy()))
+                loss_d2, _, _, pred2 = model(test_samples2, test_label2, mask_ratio=0, reconstruct=False)
+                acc2 = (stats.mode(all_pred).mode[0] == test_label2[0].cpu().detach().numpy()) * 100
+                all_acc2.append(acc2)
+        Matrix.append(all_acc2)
+        with open(os.path.join(args.output_dir, f'evaluate_{data_iter_step}.npy'), 'wb') as f:
+                np.save(f, np.array(all_results))
+        model.train()
         model, optimizer, loss_scaler = _reinitialize_model(base_model, base_optimizer, base_scalar, clone_model, args, device)
   #  save_accuracy_results(args)
     # gather the stats from all processes
