@@ -109,6 +109,7 @@ def train_on_test(base_model: torch.nn.Module,
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
     dataset_len = len(dataset_val)
+    print(dataset_val.Size())
     (test_samples, test_label) = dataset_val
     test_samples = test_samples.to(device, non_blocking=True)[0]
     test_label = test_label.to(device, non_blocking=True)
