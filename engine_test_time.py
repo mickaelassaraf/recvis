@@ -186,13 +186,14 @@ def train_on_test(base_model: torch.nn.Module,
       
             with torch.no_grad():
                 all_pred2 = []
-                all_pred2.extend(list(pred2.argmax(axis=1).detach().cpu().numpy()))
+                
                 loss_d2, _, _, pred2 = model(test_samples2, test_label2, mask_ratio=0, reconstruct=False)
-                acc2 = (stats.mode(all_pred).mode[0] == test_label2[0].cpu().detach().numpy()) * 100
+                all_pred2.extend(list(pred2.argmax(axis=1).detach().cpu().numpy()))
+                acc2 = (stats.mode(all_pred2).mode[0] == test_label2[0].cpu().detach().numpy()) * 100
                 all_acc2.append(acc2)
         Matrix.append(all_acc2)
         with open(os.path.join(args.output_dir, f'evaluate_{data_iter_step}.npy'), 'wb') as f:
-                np.save(f, np.array(all_results))
+                np.save(f, np.array(all_acc2))
         model.train()
         model, optimizer, loss_scaler = _reinitialize_model(base_model, base_optimizer, base_scalar, clone_model, args, device)
   #  save_accuracy_results(args)
