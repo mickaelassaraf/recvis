@@ -102,7 +102,6 @@ def train_on_test(base_model: torch.nn.Module,
     all_results = [list() for i in range(args.steps_per_example)]
     all_losses =  [list() for i in range(args.steps_per_example)]
     metric_logger = misc.MetricLogger(delimiter="  ")
-    dataset_train,dataset_val
     accum_iter = args.accum_iter
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     Matrix=[]
@@ -116,7 +115,6 @@ def train_on_test(base_model: torch.nn.Module,
     pseudo_labels = None
         # Test time training:
     for step_per_example in range(args.steps_per_example * accum_iter):
-            train_data = next(train_loader)
             # Train data are 2 values [image, class]
             mask_ratio = args.mask_ratio
             samples, _ = dataset_train
@@ -153,9 +151,9 @@ def train_on_test(base_model: torch.nn.Module,
                     all_results[step_per_example // accum_iter].append(acc1)
                     model.train()
         
-            with open(os.path.join(args.output_dir, f'results_{}.npy'), 'wb') as f:
+            with open(os.path.join(args.output_dir, f'results.npy'), 'wb') as f:
                 np.save(f, np.array(all_results))
-            with open(os.path.join(args.output_dir, f'losses_{data_iter_step}.npy'), 'wb') as f:
+            with open(os.path.join(args.output_dir, f'losses.npy'), 'wb') as f:
                 np.save(f, np.array(all_losses))
             
             optimizer.zero_grad()
