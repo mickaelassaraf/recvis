@@ -102,25 +102,30 @@ def train_on_test(base_model: torch.nn.Module,
     all_results = [list() for i in range(args.steps_per_example)]
     all_losses =  [list() for i in range(args.steps_per_example)]
     metric_logger = misc.MetricLogger(delimiter="  ")
+    train_loader = iter(torch.utils.data.DataLoader(dataset_train, batch_size=1, shuffle=False, num_workers=args.num_workers))
+    val_loader = iter(torch.utils.data.DataLoader(dataset_val, batch_size=1, shuffle=False, num_workers=args.num_workers))
     accum_iter = args.accum_iter
     metric_logger.add_meter('lr', misc.SmoothedValue(window_size=1, fmt='{value:.6f}'))
-    Matrix=[]
+    
     model, optimizer, loss_scaler = _reinitialize_model(base_model, base_optimizer, base_scalar, clone_model, args, device)
     if log_writer is not None:
         print('log_dir: {}'.format(log_writer.log_dir))
     dataset_len = len(dataset_val)
-    print(dataset_val.Size())
-    (test_samples, test_label) = dataset_val
-    test_samples = test_samples.to(device, non_blocking=True)[0]
-    test_label = test_label.to(device, non_blocking=True)
-    pseudo_labels = None
+    print(dataset_val.size())
+    for data_iter_step in range(iter_start, dataset_len):
+        val_data = next(val_loader)
+        (test_samples, test_label) = val_data
+        test_samples = test_samples.to(device, non_blocking=True)[0]
+        test_label = test_label.to(device, non_blocking=True)
+        pseudo_labels = None
         # Test time training:
-    for step_per_example in range(args.steps_per_example * accum_iter):
+        for step_per_example in range(args.steps_per_example * accum_iter):
+            train_data = next(train_loader)
             # Train data are 2 values [image, class]
             mask_ratio = args.mask_ratio
-            samples, _ = dataset_train
+            samples, _ = train_data
             targets_rot, samples_rot = None, None
-            samples = samples.to(device, non_blocking=True) # index [0] becuase the data is batched to have size 1.
+            samples = samples.to(device, non_blocking=True)[0] # index [0] becuase the data is batched to have size 1.
             loss_dict, _, _, _ = model(samples, None, mask_ratio=mask_ratio)
             loss = torch.stack([loss_dict[l] for l in loss_dict]).sum()
             loss_value = loss.item()
@@ -130,8 +135,12 @@ def train_on_test(base_model: torch.nn.Module,
                 sys.exit(1)
             loss_scaler(loss, optimizer, parameters=model.parameters(),
                         update_grad=(step_per_example + 1) % accum_iter == 0)
-              
-            all_losses[step_per_example // accum_iter].append(loss_value/accum_iter)
+            if (step_per_example + 1) % accum_iter == 0:
+                if args.verbose:
+                    print(f'datapoint {data_iter_step} iter {step_per_example}: rec_loss {loss_value}')
+                
+                all_losses[step_per_example // accum_iter].append(loss_value/accum_iter)
+                optimizer.zero_grad()
                     
             metric_logger.update(**{k:v.item() for k,v in loss_dict.items()})
             lr = optimizer.param_groups[0]["lr"]
@@ -143,7 +152,9 @@ def train_on_test(base_model: torch.nn.Module,
                     all_pred = []
                     for _ in range(accum_iter):
                         loss_d, _, _, pred = model(test_samples, test_label, mask_ratio=0, reconstruct=False)
-                        
+                        if args.verbose:
+                            cls_loss = loss_d['classification'].item()
+                            print(f'datapoint {data_iter_step} iter {step_per_example}: class_loss {cls_loss}')
                         all_pred.extend(list(pred.argmax(axis=1).detach().cpu().numpy()))
                     acc1 = (stats.mode(all_pred).mode[0] == test_label[0].cpu().detach().numpy()) * 100.
                     if (step_per_example + 1) // accum_iter == args.steps_per_example:
@@ -151,16 +162,16 @@ def train_on_test(base_model: torch.nn.Module,
                         metric_logger.update(loss=loss_value)
                     all_results[step_per_example // accum_iter].append(acc1)
                     model.train()
-        
-            with open(os.path.join(args.output_dir, f'results.npy'), 'wb') as f:
+        if data_iter_step % 50 == 1:
+            print('step: {}, acc {} rec-loss {}'.format(data_iter_step, np.mean(all_results[-1]), loss_value))
+        if data_iter_step % 500 == 499 or (data_iter_step == dataset_len - 1):
+            with open(os.path.join(args.output_dir, f'results_{data_iter_step}.npy'), 'wb') as f:
                 np.save(f, np.array(all_results))
-            with open(os.path.join(args.output_dir, f'losses.npy'), 'wb') as f:
+            with open(os.path.join(args.output_dir, f'losses_{data_iter_step}.npy'), 'wb') as f:
                 np.save(f, np.array(all_losses))
-            
-            optimizer.zero_grad()
-
-            
-            
+            all_results = [list() for i in range(args.steps_per_example)]
+            all_losses = [list() for i in range(args.steps_per_example)]
+        optimizer.zero_grad()
         
   #  save_accuracy_results(args)
     # gather the stats from all processes
@@ -185,3 +196,4 @@ def save_accuracy_results(args):
         for i in range(args.steps_per_example):
             assert len(all_all_results[i]) == 50000, len(all_all_results[i])
             f.write(f'{i}\t{np.mean(all_all_results[i])}\n')
+
